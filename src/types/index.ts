@@ -4,6 +4,8 @@ export interface Task {
   title: string;
   completed: boolean;
   createdAt: number;
+  dueDate?: number; // Optional due date timestamp
+  isExpired?: boolean; // Flag to mark expired tasks
 }
 
 export interface Note {

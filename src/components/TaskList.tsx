@@ -1,17 +1,18 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Task } from '@/types';
 import TaskItem from './TaskItem';
 import CreateTaskForm from './CreateTaskForm';
 import EmptyState from './EmptyState';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TaskListProps {
   tasks: Task[];
-  onCreateTask: (title: string) => void;
+  onCreateTask: (title: string, dueDate?: number) => void;
   onToggleComplete: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onExpireTask: (id: string) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({
@@ -19,8 +20,33 @@ const TaskList: React.FC<TaskListProps> = ({
   onCreateTask,
   onToggleComplete,
   onDeleteTask,
+  onExpireTask,
 }) => {
   const { toast } = useToast();
+  
+  // Check for expired tasks every minute
+  useEffect(() => {
+    const checkExpiredTasks = () => {
+      const now = Date.now();
+      tasks.forEach(task => {
+        if (task.dueDate && now > task.dueDate && !task.isExpired) {
+          onExpireTask(task.id);
+          toast({
+            description: `Task "${task.title}" has expired`,
+            variant: "destructive"
+          });
+        }
+      });
+    };
+    
+    // Check once immediately
+    checkExpiredTasks();
+    
+    // Then set up interval
+    const intervalId = setInterval(checkExpiredTasks, 60000); // Check every minute
+    
+    return () => clearInterval(intervalId);
+  }, [tasks, onExpireTask, toast]);
   
   const handleDeleteTask = (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -33,11 +59,25 @@ const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
-  // Sort tasks: incomplete first, then by creation date (newest first)
+  // Sort tasks: unexpired first, then incomplete, then by creation date (newest first)
   const sortedTasks = [...tasks].sort((a, b) => {
+    // Expired tasks go last
+    if (!!a.isExpired !== !!b.isExpired) {
+      return a.isExpired ? 1 : -1;
+    }
+    // Then incomplete tasks first
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
+    // Then by due date if both have due dates
+    if (a.dueDate && b.dueDate) {
+      return a.dueDate - b.dueDate;
+    }
+    // Tasks with due dates go before tasks without
+    if (a.dueDate || b.dueDate) {
+      return a.dueDate ? -1 : 1;
+    }
+    // Finally by creation date (newest first)
     return b.createdAt - a.createdAt;
   });
   

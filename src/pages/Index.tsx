@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TaskList from '@/components/TaskList';
 import NoteList from '@/components/NoteList';
@@ -14,12 +14,14 @@ const Index = () => {
   const [notes, setNotes] = useLocalStorage<Note[]>('notes', []);
 
   // Task management functions
-  const handleCreateTask = (title: string) => {
+  const handleCreateTask = (title: string, dueDate?: number) => {
     const newTask: Task = {
       id: crypto.randomUUID(),
       title,
       completed: false,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      dueDate,
+      isExpired: false
     };
     setTasks([...tasks, newTask]);
   };
@@ -32,6 +34,12 @@ const Index = () => {
 
   const handleDeleteTask = (id: string) => {
     setTasks(tasks.filter(task => task.id !== id));
+  };
+
+  const handleExpireTask = (id: string) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, isExpired: true } : task
+    ));
   };
 
   // Note management functions
@@ -78,6 +86,7 @@ const Index = () => {
                 onCreateTask={handleCreateTask}
                 onToggleComplete={handleToggleTask}
                 onDeleteTask={handleDeleteTask}
+                onExpireTask={handleExpireTask}
               />
             </motion.div>
           ) : (
